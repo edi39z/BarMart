@@ -1,8 +1,9 @@
 // frontend/src/app/api/login/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "@/lib/prisma"
+import { prisma } from "../../../lib/prisma"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
+
 
 const JWT_SECRET = process.env.JWT_SECRET!
 
@@ -32,5 +33,11 @@ export async function POST(req: NextRequest) {
         { expiresIn: "1d" }
     )
 
-    return NextResponse.json({ message: "Login berhasil", token })
+    return NextResponse.json({
+        message: "Login berhasil", token,
+        user: {
+            email: user.email,
+            image: user.image || ""
+        }
+    })
 }
