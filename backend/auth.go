@@ -57,6 +57,11 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 			return
 		}
+		role := r.Context().Value("role").(string)
+		if role != "admin" {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 
 		userId := claims["userId"].(string)
 		email := claims["email"].(string)
@@ -64,7 +69,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// Tambahkan ke context
 		ctx := context.WithValue(r.Context(), userIDKey, userId)
 		ctx = context.WithValue(ctx, emailKey, email)
-
+		ctx = context.WithValue(ctx, "role", role)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

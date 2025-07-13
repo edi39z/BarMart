@@ -12,6 +12,34 @@ model User {
   email     String   @unique
   password  String
   name      String?
-   image    String?
+  image    String?
   createdAt DateTime @default(now())
+}
+model Admin {
+  uuid        String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  superAdmin  Boolean  @default(false)
+  HP          String
+  createdAt   DateTime @default(now())
+  role        String   @default("admin") 
+}
+model Petugas {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  nama      String
+  HP        String
+  createdAt DateTime @default(now())
+}
+model Pedagang {
+  id            Int      @id @default(autoincrement())
+  nama          String
+  jenis_dagangan String
+  email         String   @unique
+  password      String
+  id_lapak      String
+  HP            String
+  created       DateTime @default(now())
+
 }
