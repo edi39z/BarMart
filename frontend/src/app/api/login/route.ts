@@ -1,43 +1,28 @@
-// frontend/src/app/api/login/route.ts
 import { NextRequest, NextResponse } from "next/server"
-import { prisma } from "../../../lib/prisma"
+import { findUserByEmail } from "@/lib/findUser"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
-
 
 const JWT_SECRET = process.env.JWT_SECRET!
 
 export async function POST(req: NextRequest) {
-    const body = await req.json()
-    const { email, password } = body
+    const { email, password } = await req.json()
 
     if (!email || !password) {
         return NextResponse.json({ error: "Email dan password wajib diisi" }, { status: 400 })
     }
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await findUserByEmail(email)
 
-    if (!user) {
-        return NextResponse.json({ error: "Email tidak ditemukan" }, { status: 404 })
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+        return NextResponse.json({ error: "Email atau password salah" }, { status: 401 })
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password)
+    const token = jwt.sign({
+        userId: user.id,
+        email: user.email,
+        role: user.role
+    }, JWT_SECRET, { expiresIn: "1d" })
 
-    if (!passwordMatch) {
-        return NextResponse.json({ error: "Password salah" }, { status: 401 })
-    }
-
-    const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        JWT_SECRET,
-        { expiresIn: "1d" }
-    )
-
-    return NextResponse.json({
-        message: "Login berhasil", token,
-        user: {
-            email: user.email,
-            image: user.image || ""
-        }
-    })
+    return NextResponse.json({ message: `Login berhasil sebagai ${user.role}`, token, role: user.role })
 }
