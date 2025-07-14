@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { findUserByEmail } from "@/lib/findUser"
+import { findUserByEmail } from "@/lib/auth/findUserByEmail"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 
@@ -18,11 +18,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Email atau password salah" }, { status: 401 })
     }
 
-    const token = jwt.sign({
-        userId: user.id,
-        email: user.email,
-        role: user.role
-    }, JWT_SECRET, { expiresIn: "1d" })
+    const token = jwt.sign(
+        {
+            userId: user.id,
+            email: user.email,
+            role: user.role,
+        },
+        JWT_SECRET,
+        { expiresIn: "1d" }
+    )
 
-    return NextResponse.json({ message: `Login berhasil sebagai ${user.role}`, token, role: user.role })
+    return NextResponse.json({
+        message: "Login berhasil",
+        token,
+        user: {
+            email: user.email,
+            role: user.role,
+        },
+    })
 }

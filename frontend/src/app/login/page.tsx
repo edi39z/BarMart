@@ -3,10 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Cookies from "js-cookie"
-
 export default function LoginPage() {
-    const router = useRouter() // ✅ Inisialisasi router
 
+    const router = useRouter() // ✅ Inisialisasi router
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [message, setMessage] = useState("")
@@ -24,22 +23,34 @@ export default function LoginPage() {
             const data = await res.json()
             console.log("📦 Res login:", data)
 
-            if (res.ok && data.user) {
-                Cookies.set("token", data.token)
-                localStorage.setItem("token", data.token)
-                localStorage.setItem("email", data.user.email)
-                localStorage.setItem("image", data.user.image || "")
-                console.log("✅ Login sukses, redirect ke /")
-                router.push("/")
-                return
-            }
+            if (res.ok && data.token) {
+                Cookies.set("token", data.token, { expires: 1 })
 
-            setMessage(data.message || data.error || "Login gagal")
+                localStorage.setItem("token", data.token)
+                localStorage.setItem("email", email)
+                localStorage.setItem("role", data.role)
+
+                switch (data.role) {
+                    case "admin":
+                        router.push("/dashboard/admin")
+                        break
+                    case "petugas":
+                        router.push("/dashboard/petugas")
+                        break
+                    case "pedagang":
+                    default:
+                        router.push("/")
+                        break
+                }
+            } else {
+                setMessage(data.error || "Login gagal")
+            }
         } catch (err) {
             console.error("❌ Error saat login:", err)
             setMessage("Terjadi kesalahan")
         }
     }
+
 
     return (
         <main className="p-6">
