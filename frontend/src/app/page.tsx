@@ -1,48 +1,67 @@
 "use client"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { jwtDecode } from "jwt-decode"
 
-export default function HomePage() {
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+import { useState } from "react"
+import LogoutButton from "@/components/LogoutButton"
 
-  useEffect(() => {
+export default function AdminPage() {
+  const [data, setData] = useState<Record<string, any> | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchSecret = async () => {
     const token = localStorage.getItem("token")
-
-    // Jika token tidak ada → redirect ke /login
     if (!token) {
-      console.log("⛔ Tidak ada token, redirect ke login")
-      router.replace("/login")
+      setError("❌ Token tidak ditemukan")
       return
     }
 
-    // Optional: validasi token expired
+    setLoading(true)
+    setError(null)
+    setData(null)
+
     try {
-      const decoded: any = jwtDecode(token)
-      const isExpired = decoded.exp * 1000 < Date.now()
-      if (isExpired) {
-        console.log("⛔ Token kadaluarsa, redirect ke login")
-        localStorage.clear()
-        router.replace("/login")
-        return
+      const res = await fetch("http://localhost:4000/api/secret", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok) {
+        const errData = await res.text()
+        throw new Error(errData || "Terjadi kesalahan saat mengambil data")
       }
-    } catch (err) {
-      console.log("⛔ Token invalid:", err)
-      localStorage.clear()
-      router.replace("/login")
-      return
+
+      const result = await res.json()
+      setData(result)
+    } catch (err: any) {
+      console.error("❌ Error:", err)
+      setError(err.message || "Gagal fetch data")
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
-  }, [router])
-
-  if (loading) return <p className="p-6">🔄 Mengecek autentikasi...</p>
+  }
 
   return (
     <main className="p-6">
-      <h1 className="text-2xl font-bold">Halaman Utama</h1>
-      <p>✅ User sudah login</p>
+      <h1 className="text-2xl font-bold mb-4">Dashboard Admin</h1>
+
+      <button
+        onClick={fetchSecret}
+        disabled={loading}
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition"
+      >
+        {loading ? "Memuat..." : "🔐 Ambil Data Rahasia"}
+      </button>
+
+      {data && (
+        <pre className="mt-4 p-4 bg-gray-100 border rounded text-sm whitespace-pre-wrap">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+
+      {error && <p className="mt-4 text-red-600">{error}</p>}
+
+      <LogoutButton />
     </main>
   )
 }
