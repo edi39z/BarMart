@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"context"
@@ -9,20 +9,18 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte("dodifire39z") // sama dengan JWT_SECRET Next.js
+var jwtKey = []byte("dodifire39z")
 
-// Context key supaya aman
 type contextKey string
 
 const (
 	userIDKey contextKey = "userId"
 	emailKey  contextKey = "email"
+	roleKey   contextKey = "role"
 )
 
-// Middleware untuk verifikasi token dan inject user ke context
 func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS headers
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
@@ -33,8 +31,8 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		authHeader := r.Header.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			http.Error(w, "Unauthorized: token missing or invalid", http.StatusUnauthorized)
 			return
 		}
 
@@ -57,19 +55,11 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			http.Error(w, "Invalid token claims", http.StatusUnauthorized)
 			return
 		}
-		role := r.Context().Value("role").(string)
-		if role != "admin" {
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
 
-		userId := claims["userId"].(string)
-		email := claims["email"].(string)
+		ctx := context.WithValue(r.Context(), userIDKey, claims["userId"])
+		ctx = context.WithValue(ctx, emailKey, claims["email"])
+		ctx = context.WithValue(ctx, roleKey, claims["role"])
 
-		// Tambahkan ke context
-		ctx := context.WithValue(r.Context(), userIDKey, userId)
-		ctx = context.WithValue(ctx, emailKey, email)
-		ctx = context.WithValue(ctx, "role", role)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 }

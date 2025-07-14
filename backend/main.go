@@ -1,45 +1,38 @@
 package main
 
 import (
-	"encoding/json"
+	"barmart-backend/handlers"
+	"barmart-backend/middleware"
 	"fmt"
 	"net/http"
 )
 
-func protectedHandler(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(userIDKey).(string)
-	email := r.Context().Value(emailKey).(string)
+func withCORS(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Header CORS di sini
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 
-	res := map[string]string{
-		"message": "Iniss data rahasia dari backend Go!",
-		"userId":  userId,
-		"email":   email,
-	}
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
-	json.NewEncoder(w).Encode(res)
-}
-
-func helloHandler(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(map[string]string{"message": "Halo dari Go!"})
-}
-func userInfoHandler(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(userIDKey).(string)
-	email := r.Context().Value(emailKey).(string)
-
-	res := map[string]string{
-		"userId": userId,
-		"email":  email,
-		"status": "✅ Ini data user yang berhasil diverifikasi lewat JWT",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+		h.ServeHTTP(w, r)
+	})
 }
 
 func main() {
-	http.HandleFunc("/api/hello", helloHandler)
-	http.HandleFunc("/api/secret", AuthMiddleware(protectedHandler))
-	http.HandleFunc("/api/user", AuthMiddleware(userInfoHandler)) // 🆕
-	fmt.Println("🚀 Backend Go jalan di http://localhost:4000")
-	http.ListenAndServe(":4000", nil)
+	mux := http.NewServeMux()
+
+	// Daftar route
+	mux.HandleFunc("/api/hello", handlers.HelloHandler)
+	mux.HandleFunc("/api/secret", middleware.AuthMiddleware(handlers.ProtectedHandler))
+	mux.HandleFunc("/api/user", middleware.AuthMiddleware(handlers.UserInfoHandler))
+	mux.HandleFunc("/api/admin", middleware.AuthMiddleware(middleware.AdminOnly(handlers.AdminHandler)))
+	mux.HandleFunc("/api/petugas", middleware.AuthMiddleware(middleware.PetugasOnly(handlers.PetugasHandler)))
+
+	fmt.Println("🚀 Server berjalan di http://localhost:4000")
+	http.ListenAndServe(":4000", withCORS(mux)) // ✅ CORS aktif di semua route
 }
