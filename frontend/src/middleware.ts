@@ -1,43 +1,51 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { jwtVerify } from "jose"
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET)
 
 export async function middleware(req: NextRequest) {
-    const token = req.cookies.get("token")?.value || req.headers.get("Authorization")?.replace("Bearer ", "")
+    const pathname = req.nextUrl.pathname
 
+    // Routes yang perlu proteksi
+    const protectedRoutes = ["/dashboard"]
+    const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+
+    if (!isProtectedRoute) {
+        return NextResponse.next()
+    }
+
+    const token = req.cookies.get("token")?.value
+
+    // Jika tidak ada token, redirect ke login
     if (!token) {
         return NextResponse.redirect(new URL("/login", req.url))
     }
 
     try {
-        const { payload } = await jwtVerify(token, JWT_SECRET)
+        // Decode token secara manual
+        const payload = JSON.parse(atob(token.split(".")[1]))
         const role = payload.role as string
+        const exp = payload.exp
 
-        // Redirect berdasarkan role & path
-        const pathname = req.nextUrl.pathname
-
-        if (pathname.startsWith("/dashboard/admin") && role !== "admin") {
-            return NextResponse.redirect(new URL("/", req.url))
+        // Check if token expired
+        if (exp && Date.now() >= exp * 1000) {
+            const response = NextResponse.redirect(new URL("/login", req.url))
+            response.cookies.delete("token")
+            return response
         }
 
-        if (pathname.startsWith("/dashboard/petugas") && role !== "petugas") {
+        // Hanya admin dan petugas yang bisa akses dashboard
+        if (pathname.startsWith("/dashboard") && role !== "admin" && role !== "petugas") {
             return NextResponse.redirect(new URL("/", req.url))
         }
 
         return NextResponse.next()
     } catch (err) {
-        console.error("❌ Invalid token:", err)
-        return NextResponse.redirect(new URL("/login", req.url))
+        console.error("❌ Token decode error:", err)
+        const response = NextResponse.redirect(new URL("/login", req.url))
+        response.cookies.delete("token")
+        return response
     }
 }
 
 export const config = {
-    matcher: [
-        "/",                    // proteksi beranda
-        "/dashboard/admin",     // proteksi admin
-        "/dashboard/petugas",   // proteksi petugas
-        "/dashboard/:path*", 
-    ],
+    matcher: ["/dashboard/:path*"],
 }
