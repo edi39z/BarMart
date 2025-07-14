@@ -1,17 +1,11 @@
 import { prisma } from "@/lib/prisma"
+import { AuthUser } from "./types"
 
-type Role = "admin" | "petugas" | "pedagang"
-
-type FoundUser = {
-    id: string | number
-    email: string
-    password: string
-    role: Role
-}
-
-export async function findUserByEmail(email: string): Promise<FoundUser | null> {
-    // Coba cari di Admin
-    const admin = await prisma.admin.findUnique({ where: { email } })
+export async function findUserByEmail(email: string): Promise<AuthUser | null> {
+    // 🔍 Cek di tabel Admin
+    const admin = await prisma.admin.findUnique({
+        where: { email },
+    })
     if (admin) {
         return {
             id: admin.uuid,
@@ -21,8 +15,10 @@ export async function findUserByEmail(email: string): Promise<FoundUser | null> 
         }
     }
 
-    // Coba cari di Petugas
-    const petugas = await prisma.petugas.findUnique({ where: { email } })
+    // 🔍 Cek di tabel Petugas
+    const petugas = await prisma.petugas.findUnique({
+        where: { email },
+    })
     if (petugas) {
         return {
             id: petugas.id,
@@ -32,8 +28,10 @@ export async function findUserByEmail(email: string): Promise<FoundUser | null> 
         }
     }
 
-    // Coba cari di Pedagang
-    const pedagang = await prisma.pedagang.findUnique({ where: { email } })
+    // 🔍 Cek di tabel Pedagang
+    const pedagang = await prisma.pedagang.findUnique({
+        where: { email },
+    })
     if (pedagang) {
         return {
             id: pedagang.id,
@@ -43,5 +41,6 @@ export async function findUserByEmail(email: string): Promise<FoundUser | null> 
         }
     }
 
+    // ❌ Tidak ditemukan
     return null
 }
